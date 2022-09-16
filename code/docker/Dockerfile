@@ -1,0 +1,25 @@
+FROM ubuntu
+
+ARG GH_TOKEN
+
+ENV UK_KRAFT_GITHUB_TOKEN=$GH_TOKEN
+
+RUN apt-get update
+
+RUN apt-get install -y --no-install-recommends build-essential libncurses-dev libyaml-dev flex git wget socat bison unzip uuid-runtime python3 python3-pip
+
+RUN apt-get install -y gcc-12-x86-64-linux-gnu
+
+RUN apt-get install -y g++-12-x86-64-linux-gnu
+
+RUN apt-get install -y qemu-system-x86
+
+RUN update-alternatives --install /usr/bin/x86_64-linux-gnu-gcc x86_64-linux-gnu-gcc /usr/bin/x86_64-linux-gnu-gcc-12 100
+
+RUN update-alternatives --install /usr/bin/x86_64-linux-gnu-g++ x86_64-linux-gnu-g++ /usr/bin/x86_64-linux-gnu-g++-12 100
+
+RUN python3 -m pip install git+https://github.com/unikraft/kraft.git
+
+RUN echo $UK_KRAFT_GITHUB_TOKEN
+
+RUN kraft list update
