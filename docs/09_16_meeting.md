@@ -5,7 +5,7 @@
 1. Discussed unikernel frameworks
 
     1. Unikraft v/s Nanos
-    2. Language of choice - Python
+    2. Language of choice - Python / C++
     3. Setting up environments
 
 2. Discussed networking TCP/IP stack
