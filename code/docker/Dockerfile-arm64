@@ -20,6 +20,4 @@ RUN update-alternatives --install /usr/bin/x86_64-linux-gnu-g++ x86_64-linux-gnu
 
 RUN python3 -m pip install git+https://github.com/unikraft/kraft.git
 
-RUN echo $UK_KRAFT_GITHUB_TOKEN
-
 RUN kraft list update
