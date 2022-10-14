@@ -12,6 +12,4 @@ RUN apt-get install -y qemu-system-x86
 
 RUN python3 -m pip install git+https://github.com/unikraft/kraft.git
 
-RUN echo $UK_KRAFT_GITHUB_TOKEN
-
 RUN kraft list update
