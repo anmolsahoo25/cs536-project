@@ -23,8 +23,10 @@ sudo depmod
 
 (cd linux; sudo cp arch/x86/kvm/kvm-intel.ko /lib/modules/5.10.147-133.644.amzn2.x86_64/kernel/arch/x86/kvm/)
 
-wget https://download.qemu.org/qemu-6.1.0.tar.xz
+wget https://download.qemu.org/qemu-6.0.0.tar.xz
 
-tar -xvf qemu-6.1.0.tar.xz
+tar -xvf qemu-6.0.0.tar.xz
 
-(cd qemu-6.1.0; ./configure --target-list=x86_64-softmmu; make -j47; sudo make install; sudo update-alternatives --install /usr/bin/qemu-system-x86_64 qemu-system-x86_64 /usr/local/bin/qemu-system-x86_64 100)
+(cd qemu-6.0.0; ./configure --target-list=x86_64-softmmu; make -j47; sudo make install; sudo update-alternatives --install /usr/bin/qemu-system-x86_64 qemu-system-x86_64 /usr/local/bin/qemu-system-x86_64 100)
+
+sudo update-alternatives --install /bin/qemu-system-x86_64 qemu-system-x86_64 /usr/bin/qemu-system-x86_64 100
