@@ -9,7 +9,7 @@ sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
 sudo systemctl start docker
 
 git clone --branch kernel-5.10.147-133.644.amzn2 \
-    --single-branch https://github.com/amazonlinux/linux
+    --single-branch --depth 1 https://github.com/amazonlinux/linux
 
 (cd linux; cp /boot/config-5.10.147-133.644.amzn2.x86_64 ./.config)
 
