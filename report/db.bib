@@ -11,3 +11,104 @@ articleno = {46},
 numpages = {17},
 series = {USENIX ATC'20}
 }
+
+@inproceedings{tootoonchian-resq,
+author = {Tootoonchian, Amin and Panda, Aurojit and Lan, Chang and Walls, Melvin and Argyraki, Katerina and Ratnasamy, Sylvia and Shenker, Scott},
+title = {ResQ: Enabling SLOs in Network Function Virtualization},
+year = {2018},
+isbn = {9781931971430},
+publisher = {USENIX Association},
+address = {USA},
+abstract = {Network Function Virtualization is allowing carriers to replace dedicated middleboxes with Network Functions (NFs) consolidated on shared servers, but the question of how (and even whether) one can achieve performance SLOs with software packet processing remains open. A key challenge is the high variability and unpredictability in throughput and latency introduced when NFs are consolidated. We show that, using processor cache isolation and with careful sizing of I/O buffers, we can directly enforce a high degree of performance isolation among consolidated NFs - for a wide range of NFs, our technique caps the maximum throughput degradation to 2.9\% (compared to 44.3\%), and the 95th percentile latency degradation to 2.5\% (compared to 24.5\%). Building on this, we present ResQ, a resource manager for NFV that enforces performance SLOs for multi-tenant NFV clusters in a resource efficient manner. ResQ achieves 60\%-236\% better resource efficiency for enforcing SLOs that contain contention-sensitive NFs compared to previous work.},
+booktitle = {Proceedings of the 15th USENIX Conference on Networked Systems Design and Implementation},
+pages = {283–297},
+numpages = {15},
+location = {Renton, WA, USA},
+series = {NSDI'18}
+}
+
+@inproceedings{herter,
+author = {Herter, Jorg and Backes, Peter and Haupenthal, Florian and Reineke, Jan},
+title = {CAMA: A Predictable Cache-Aware Memory Allocator},
+year = {2011},
+isbn = {9780769544427},
+publisher = {IEEE Computer Society},
+address = {USA},
+url = {https://doi.org/10.1109/ECRTS.2011.11},
+doi = {10.1109/ECRTS.2011.11},
+abstract = {General-purpose dynamic memory allocation algorithms strive for small memory fragmentation and good av-er-age-case response times. Hard real-time settings, in contrast, place different demands on dynamic memory allocators: worst-case response times are more important than av-er-age-case response times. Furthermore, predictable cache behavior is a prerequisite for timing analysis to derive tight bounds on a program's execution time. This paper proposes a novel algorithm that meets these demands. It guarantees constant response times, does not cause unpredictable cache pollution, and allocations are cache-set directed, i.e., allocated memory is guaranteed to be mapped to a given cache set. The latter two are necessary to enable a subsequent precise static cache analysis.},
+booktitle = {Proceedings of the 2011 23rd Euromicro Conference on Real-Time Systems},
+pages = {23–32},
+numpages = {10},
+keywords = {predictability, Dynamic storage allocation, WCET analysis},
+series = {ECRTS '11}
+}
+
+
+@inproceedings{sherwood,
+author = {Sherwood, Timothy and Calder, Brad and Emer, Joel},
+title = {Reducing Cache Misses Using Hardware and Software Page Placement},
+year = {1999},
+isbn = {158113164X},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/305138.305189},
+doi = {10.1145/305138.305189},
+booktitle = {Proceedings of the 13th International Conference on Supercomputing},
+pages = {155–164},
+numpages = {10},
+location = {Rhodes, Greece},
+series = {ICS '99}
+}
+
+@inproceedings{assaf,
+author = {Funaro, Liran and Ben-Yehuda, Orna Agmon and Schuster, Assaf},
+title = {Ginseng: Market-Driven LLC Allocation},
+year = {2016},
+isbn = {9781931971300},
+publisher = {USENIX Association},
+address = {USA},
+abstract = {Cloud providers must dynamically allocate their physical resources to the right client to maximize the benefit that they can get out of given hardware. Cache Allocation Technology (CAT) makes it possible for the provider to allocate last level cache to virtual machines to prevent cache pollution. The provider can also allocate the cache to optimize client benefit. But how should it optimize client benefit, when it does not even know what the client plans to do?We present an auction-based mechanism that dynamically allocates cache while optimizing client benefit and improving hardware utilization. We evaluate our mechanism on benchmarks from the Phoronix Test Suite. Experimental results show that Ginseng for cache allocation improved clients' aggregated benefit by up to 42.8\texttimes{} compared with state-of-the-art static and dynamic algorithms.},
+booktitle = {Proceedings of the 2016 USENIX Conference on Usenix Annual Technical Conference},
+pages = {295–308},
+numpages = {14},
+location = {Denver, CO, USA},
+series = {USENIX ATC '16}
+}
+
+@inproceedings{chen,
+author = {Chen, Ruobing and Wu, Jinping and Shi, Haosen and Li, Yusen and Yin, Haiyan and Tang, Shanjiang and Liu, Xiaoguang and Wang, Gang},
+title = {Deep Learning Assisted Resource Partitioning for Improving Performance on Commodity Servers},
+year = {2020},
+isbn = {9781450380751},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3410463.3414668},
+doi = {10.1145/3410463.3414668},
+abstract = {In this paper, we introduce a deep reinforcement learning (DRL) framework for solving the problem of partitioning LLC and memory bandwidth coordinately in an end-to-end manner. To this end, we formulate the problem as a markov decision process and utilize DRL algorithm to derive the optimal partition. To avoid the extensive cost of training the policy on physical server, we present a model-based solution, where a reward prediction model is leveraged to train the partitioning policy offline. To construct a precise reward prediction model, we introduce a novel representation for the partitioning scheme, where graph convolutional networks (GCN) is employed to represent the LLC partition as a bipartite graph so that those heterogeneous but identical partitions could result in the same representations and thus eases the prediction task.Experimental results show that our framework is able to make immediate and very competitive partitioning decisions, which improves the system performance with significant margins compared to the baseline without resource partitioning and the state-of-the-art single resource partitioning solutions.},
+booktitle = {Proceedings of the ACM International Conference on Parallel Architectures and Compilation Techniques},
+pages = {153–154},
+numpages = {2},
+keywords = {resource partitioning, deep learning, resource contention},
+location = {Virtual Event, GA, USA},
+series = {PACT '20}
+}
+
+@INPROCEEDINGS{swap,  author={Wang, Xiaodong and Chen, Shuang and Setter, Jeff and Martínez, José F.},  booktitle={2017 IEEE International Symposium on High Performance Computer Architecture (HPCA)},   title={SWAP: Effective Fine-Grain Management of Shared Last-Level Caches with Minimum Hardware Support},   year={2017},  volume={},  number={},  pages={121-132},  doi={10.1109/HPCA.2017.65}}
+
+@inproceedings{unikraft,
+author = {Kuenzer, Simon and B\u{a}doiu, Vlad-Andrei and Lefeuvre, Hugo and Santhanam, Sharan and Jung, Alexander and Gain, Gaulthier and Soldani, Cyril and Lupu, Costin and Teodorescu, \c{S}tefan and R\u{a}ducanu, Costi and Banu, Cristian and Mathy, Laurent and Deaconescu, R\u{a}zvan and Raiciu, Costin and Huici, Felipe},
+title = {Unikraft: Fast, Specialized Unikernels the Easy Way},
+year = {2021},
+isbn = {9781450383349},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3447786.3456248},
+doi = {10.1145/3447786.3456248},
+abstract = {Unikernels are famous for providing excellent performance in terms of boot times, throughput and memory consumption, to name a few metrics. However, they are infamous for making it hard and extremely time consuming to extract such performance, and for needing significant engineering effort in order to port applications to them. We introduce Unikraft, a novel micro-library OS that (1) fully modularizes OS primitives so that it is easy to customize the unikernel and include only relevant components and (2) exposes a set of composable, performance-oriented APIs in order to make it easy for developers to obtain high performance.Our evaluation using off-the-shelf applications such as nginx, SQLite, and Redis shows that running them on Unikraft results in a 1.7x-2.7x performance improvement compared to Linux guests. In addition, Unikraft images for these apps are around 1MB, require less than 10MB of RAM to run, and boot in around 1ms on top of the VMM time (total boot time 3ms-40ms). Unikraft is a Linux Foundation open source project and can be found at www.unikraft.org.},
+booktitle = {Proceedings of the Sixteenth European Conference on Computer Systems},
+pages = {376–394},
+numpages = {19},
+location = {Online Event, United Kingdom},
+series = {EuroSys '21}
+}

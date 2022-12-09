@@ -35,7 +35,8 @@
 %%
 %%
 %% The first command in your LaTeX source must be the \documentclass command.
-\documentclass[sigconf]{acmart}
+\documentclass[sigconf,authorversion,noacm]{acmart}
+\settopmatter{printacmref=false}
 
 %%
 %% \BibTeX command to typeset BibTeX logo in the docs
@@ -48,17 +49,8 @@
 %% values in them; it is your responsibility as an author to replace
 %% the commands and values with those provided to you when you
 %% complete the rights form.
-\setcopyright{acmcopyright}
-\copyrightyear{2018}
-\acmYear{2018}
-\acmDOI{XXXXXXX.XXXXXXX}
 
 %% These commands are for a PROCEEDINGS abstract or paper.
-\acmConference[Conference acronym 'XX]{Make sure to enter the correct
-  conference title from your rights confirmation emai}{June 03--05,
-  2018}{Woodstock, NY}
-\acmPrice{15.00}
-\acmISBN{978-1-4503-XXXX-X/18/06}
 
 
 %%
@@ -102,8 +94,7 @@
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{Improving hardware resource allocation for networked applications using
-unikernels}
+\title{Improving cache allocation for networked applications using unikernels}
 
 %%
 %% The "author" command and its associated commands are used to define
@@ -177,20 +168,127 @@ effectiveness of our results.
 
 \section{Introduction}
 
-\cite{alireza_2020}.
+As networking interfaces start breaking the 100-Gbps barrier, it is being
+observed that commodity processors are not able to keep up with processing
+packets at the rate required to saturate these links. With the end of Moore's
+law and Dennard scaling, there is an upper limit to how many instructions can be
+processed in a given interval, thus limiting the bandwidth achievable on
+commodity processors. This is further exacerbated by the fact that memory speeds
+have stayed mostly constant, thus main memory access is the critical bottleneck
+to processing packets at fast rates. To deal with this problem, modern
+processors often include features implementing Direct Cache Access (DCA) which
+allows peripheral devices to directly read and write data from the last-level
+cache of the processor. Since the peripheral can bypass the entire main memory,
+this reduces the effect of the slow memory hierarchy on the packet processing
+critical path and provides a pathway to better performance, at least on paper.
+But the presence of DCA does not necessarily improve performance and in certain
+cases may even decrease performance. Typically, since caches are small and there
+is high contention for cache space, DCA may not be able to place packets
+efficiently in the cache. A thorough study of the effects of DCA on networked
+applications is provided in \cite{alireza_2020}. While existing solutions to
+this problem rely on using coarse grained cache partitioning to isolate
+different applications, they do not consider the cache contention arising from
+\textit{within} an application. As we know, the computational and networking
+parts of the applications may have different cache footprints and thus limit the
+effectiveness of DCA, since they are both competing for cache resources. To
+tackle this problem, we develop a solution based on two key insights - (1)
+intra-application cache partitioning and (2) unikernels. We show that these two
+insights together are necessary to achieve a holistic solution that reduces the
+effects of cache contention arising from different parts of the same
+application. Concretely, we implement a system within a hypervisor (KVM) that
+allows an application to signal when it wants to switch into code that performs
+networking. The hypervisor uses this to information to partition the cache using
+Intel Resource Director Technology (RDT). Using this interface, we write various
+applications that are bundled with platform code to form a unikernel (Unikraft)
+and then deploy it on an Intel CPU supporting Intel RDT. Finally, we use perf to
+capture hardware events and measure the change in performance. While results
+look promising for some benchmarks ($\sim$10$\%$ improvement in runtime), they
+are not consistent across our entire testset. We identify areas of improvement
+which can make this solution feasible in practice.
 
 \section{Background and Motivation}
 
+Peripheral devices rely on the use of Direct Memory Access (DMA) to perform IO
+operations. DMA technology implemented in processors allows peripheral devices
+to directly write to system main memory through the Peripheral Component
+Interface-express (PCIe) bus.
+The typical flow of a network interface card (NIC) peripheral to receive a
+packet is to write the incoming packet in main memory and then signal the
+processor via an interrupt about this event. The processor may then perform
+additional processing on the packet, write a new packet to main memory and then
+signal the NIC to send it out.
+Thus, we can see why the memory is a bottleneck in this situation. At 100Gbps, a
+processor has 6.72ns to process small packets. But a memory access on the order
+of 100ns, makes this prohibitive. To address this problem processors implement
+Direct Cache Access (DCA) technology. DCA is an umbrella term to refer to
+technologies that can used to improve access time of peripheral DMA data, by
+placing it in the cache.
+For example, a simple technique allows a cache prefetcher to prefetch parts of
+the peripheral memory, thus improving access in predictable scenarios. Intel
+processors implement a DCA feature named DDIO (Direct-Data IO). In this setup, a
+NIC can perform DMA directly from/to the cache bypassing the main memory
+altogether. This prevents the delay incurred by the processor accessing the
+packet from main memory. Similarly, while writing the packet the NIC can read
+the packet from the cache, avoiding the latency of the main memory. We describe
+this process in detail, as it highlights the role that cache contention plays in
+this situation. When a NIC receives a packet, it writes a cache line (memory
+address block) into the LLC via PCIe. In this case, DDIO overwrites the cache
+line if it is present in the cache (PCIe write hit / write update) or allocates
+a new line if not (PCIE write miss / write allocate). Note that in the first
+case, DDIO may write the packet anywhere in the cache but in the second case, it
+may only allocate a packet in a specific region of the cache implying that
+frequent write allocations will not make effective use of the cache. When the
+processor signals the NIC to send a cache line containing the packet, the NIC
+will direcly read the packet from the cache using DDIO. Similar to the previous
+case, if the cache line is present in the cache then it is a hit (PCIe read hit)
+otherwise it reads the cache line from main memory (PCIe read miss). With this,
+it becomes possible to see how DDIO may be affected by cache contention. The
+first problem is called leaky DMA \cite{tootoonchian-resq}, where incoming
+packets arrive faster than they can be processed thus evicting older packets
+from memory. While one solution to this is to limit the number of RX descriptors
+(so that the cache space used by DDIO is bounded) it is only a temporary patch.
+Small number of RX descriptors increases the packet loss, since fewer packets
+can be buffered now. Similarly, limiting TX descriptors is also another proposed
+solution, but reducing the number of TX descriptors leads to inefficient
+utilization of the PCIe bandwidth. Thus, both of these problems are mitigated by
+increasing the number of RX/TX descriptors, but this then overloads the cache
+and leads to reduced DDIO efficiency. Along the same lines, cache contention can
+lead to eviction of RX/TX buffers, thus if a networked application is also
+performing some non-trivial computation, DDIO efficiency is affected. Along the
+same lines, cache contention between different parts of the application can also
+evict these buffers. Thus, we focus on the problem of solving cache-contention
+between different parts of the application with the intention of improving
+network performance. We provide a simple motivating example in
+Fig.1. As can be seen in Fig.1(a), at a certain point in the program's call
+stack, the cache is occupied by the packets that were received due to network
+IO. Now, the application executes some computation which displaces these cache
+lines, as seen in Fig.1(b). Now any future network IO that may need to be
+performed on these packets, would need to fetch them from main memory again.
+This clearly highlights the problem of different parts of the application
+contending for cache memory and thus affecting networking performance.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{motivating_example}
+    \label{fig:motivating}
+    \caption{Motivating Example}
+    \Description{Brief representation of our contributions at different layers.
+    Boxes in green represent our contribution and boxes in grey are the existing
+    systems that are being reused}
+\end{figure}
+
 \section{Proposed Solution}
 
-To mitigate the problems that we discussed in Section 2, we develop on two key
-insights - (1) intra-application cache partitioning and (2) using unikernels to
-remove OS contention. We discuss these two points in further detail -
-
-\textbf{Intra-application cache partitioning.} Networked applications contend
-for cache space within different parts of the application. This is because 
-
-\textbf{Using unikernels to remove OS contention.} An Operating System (OS) is
+To mitigate the problems that we discussed in Section 2, we develop our solution
+based on two key insights - (1) intra-application cache partitioning and (2)
+using unikernels to remove OS contention. Intra-application cache partitioning
+refers to a technique whereby we perform fine-grained partitioning of the cache,
+such that different parts of the same application occupy different parts of the
+cache, thus reducing cache contention. By isolating the parts of the cache in
+which the RX/TX buffers reside, interference from different parts of the
+application are prevented. Thus, these buffers are not evicted and DDIO
+performance is not affected. The second idea of using a unikernel is to reduce
+interference from the Operating System (OS). An Operating System (OS) is
 responsible for providing an abstraction of the CPU for applications. It
 maintains multiple in-memory structures for providing various services such as
 scheduling, virtual memory, device IO and others. While this is necessary for
@@ -205,7 +303,10 @@ When an application switches into a cache partition, it maybe preempted by the
 OS at any point of time. Now, the OS needs to switch its cache partition but it
 may still interfere with the memory buffers of the application (through cache
 flushes). Thus, even an effective intra-application partitioning scheme would
-not be useful in the presence of an OS.
+not be useful in the presence of an OS. This overhead is mitigated by using
+unikernels, which offset the interference caused by the OS, since they are
+specialized kernels which bundle only the necessary platform code to run the
+application.
 
 \begin{figure}[h]
   \centering
@@ -217,547 +318,142 @@ not be useful in the presence of an OS.
     systems that are being reused}
 \end{figure}
 
+We provide an overview of our solution architecture in Fig.2. The boxes in green
+represent our own contribution and the grey boxes represent the existing
+components that we have reused. We start with the description of the
+$\texttt{set\_partition}$ application programming interface (API). The
+application has access to an intrinsic function called
+$\texttt{set\_partition(int partition\_id)}$. This allows it to denote an
+abstract level for each section of the program. We expect the programmer to
+instrument their applications with calls to this function using different
+partition ids to denote which section the program is executing in. For example,
+a programmer may denote the networking parts of their application to execute in
+cache domain 1 and computational parts of their application exeucte in cache
+domain 2. Since these identifiers are abstract, the application can decide the
+scheme it uses to partition the application. A simple partitioning scheme would
+be to demarcate all network IO into a certain partition and the rest of the
+applications into another. Further refinements could even create paritions
+within the networked section for more fine-grained control. Internally, this
+intrinsic function is implemented as a hypercall in the hypervisor. A hypercall
+is a mechanism for the user program to signal to the hypervisor that it needs
+access to a special resource. This hands over control to the hypervisor which
+performs the necessary operations to hand over control of the resource and
+returns to the user program. Next, we describe the unikernel library - Unikraft,
+that we use to turn our programs into unikernels. A unikernel library is a
+specialized library that provides the necessary platform code to turn an
+application in a bare-metal kernel. Thus, this kernel can now directly execute
+on hardware (though it requires a hypervisor to provide some basic platform
+abstractions). The advantage of this approach is that only the necessary code
+needed to run the application is pulled into the final application binary. Thus,
+since we do not need virtual memory, scheduling, IO emulation and other such
+features, this code is not present in the kernel and thus the memory footprint
+of these features is avoided. Unikraft \cite{unikraft} is a library OS, that
+provides the necessary platform code and a build system to turn regular
+applications into unikernels. These unikernels can be executed on a variety of
+hypervisors such as KVM and Xen. It has implementations of standard POSIX
+compatible syscalls and additional libraries can be ported to the Unikraft
+environment for additional features. All the applications that we wrote for
+performance evaluation were turned into unikernels using Unikraft and then
+executed on a hypervisor. We also had to port additional libraries to support
+our applications. Next, we provide details of the KVM hypervisor and how we
+integrated our cache partitioning scheme into the hypervisor. There are two
+types of hypervisors, Type-I and Type-II hypervisors. Type-I hypervisors run
+directly on the CPU and provide isolation and platform abstraction features.
+Type-II hypervisors are intergrated with an existing operating system and
+re-uses the features of the operating system to provide platform abstraction.
+Both types of hypervisors use hardware virtualization to provide isolation and
+fast emulation of platform features. In our setup, we have used the KVM
+hypervisor, which is integrated with the Linux operating system and uses Intel
+VT-d to provide hardware virtualization. KVM has support for intercepting
+hypercalls from guest kernels that it is running. It is in this subsystem that
+we implement our cache-partitioning feature. We implement a new hypercall,
+intercepts calls to $\texttt{set\_partition}$ from the guest OS. Then, we
+inspect the domain ID provided by the guest OS and use it to allot it to a cache
+partition. An important nuance to keep in mind is that the guest OS may be
+executing on a different hardware thread than where the hypervisor intercepted
+it. Thus it is important to use the features of KVM to signal the correct core
+to allot the cache partition.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{bitmasks}
+    \label{fig:bitmasks}
+    \caption{Example of cache bitmasks}
+\end{figure}
+
+Finally, this allotment is performed using the Intel Resource Director
+Technology (RDT). Intel RDT has subfeature called Cache Allocation Technology
+(CAT) which is a hardware feature that allows application level cache
+partitioning. The first key component of CAT is the cache bitmask. A cache
+bitmask is a fixed size bitstring that is used to represent the regions of the
+cache that the application may occupy. We show some examples of bitmasks in
+Figure 3. As can be seen, a 1 represents a cache region that an application may
+occupy whereas a 0 represents a region it cannot. Thus, Bitmask 1 represents
+access to the full cache and Bitmasks 2 and 3 to smaller sections of it. Notice
+that Bitmask 2 and 3 are non-overlapping, thus applications execute under these
+bitmasks will not interfere with the cache footprint of each other. Each
+processor supports a fixed number of bitmasks to be preprogrammed in the system.
+Once this is done, we can write a model-specific register in each logical core
+which denotes which bitmask the current application should run under. This has
+the effect of partitioning the cache such that the requests from the core now go
+to the specific cache partition. We use this feature to dynamically switch cache
+partitions whenever an application requests a $\texttt{set\_partition}$ call.
+
+
 \section{Evaluation and Results}
 
 The evaluation of our implementation requires careful analysis because there are
-two competing effects at play. One one hand, partitioning cache space for the
-networking parts of the code may reduce the cache space available for the
-remaining parts of the application. Thus, even though the performance of the
-networking parts improves the overall application performance may suffer.
-Moreover, since our dynamic cache partitioning scheme is implemented using
-hypercalls in an hypervisor, even this may lead to an increase in runtime. Given
-this, it would not be possible to determine the impact of our work by simply
-measuring wall-clock time. Thus we use hardware performance counter events to
-benchmark different aspects of an application which we believe capture the
-performance of our implementation. We detail the different hardware events we
-capture -
+two competing effects at play. On one hand, partitioning cache space for the
+networking parts may improve the effectiveness of DDIO by preventing the
+eviction of RX/TX buffers. But on the other hand, this may reduce the cache
+space available for the remaining parts of the application. Thus, even though
+the performance of the networking parts improves the overall application
+performance may suffer. Moreover, since our dynamic cache partitioning scheme is
+implemented using hypercalls in an hypervisor, there is an overhead associated
+with the VM exit. Thus, if these events are too frequenct, it may add a
+non-negligible overhead leading to an increase in runtime. Given this, it would
+not be possible to determine the impact of our work by simply measuring
+wall-clock time. While an improvement in wall-clock time is great, it does not
+provide any insight into which part of our solution resulted in this
+improvement. In the case that performance is reduced, we need a method of
+diagnosing what led to the decrease in performance. Thus we use hardware
+performance counter events to benchmark different aspects of an application
+which we believe capture the performance of our implementation. First, we focus
+on PCIE Writes / Reads from the last level cache (LLC). This is the primary
+event that identifies if our solution is working. This event provides
+information about the number of PCIE accesses that were serviced from the LLC.
+This is important because if we are servicing more requests from the LLC, this
+implies that more network packets are staying resident in the cache and directly
+being processed from there, instead of being retrieved from main memory. Second,
+we focus on the total LLC Misses in the application. This is important because
+by partitioning the cache there is a chance we increase the number of cache
+misses in the application. Thus, we would like to analyze if the total number of
+application cache misses is increasing substantially. Finally, we also measure
+application level benchmarks such as bandwidth and latency of requests served,
+since finally any improvement in the software should result in an observed
+improvement in the client side performance. We present our results and discuss
+our observations below.
 
-\textbf{PCIE Writes / Reads from LLC.} This is the primary event that identifies
-if our solution is working. This event provides information about the number of
-PCIE accesses that were serviced from the LLC. This is important because if we
-are servicing more requests from the LLC, this implies that more network packets
-are staying resident in the cache and directly being processed from there,
-instead of being retrieved from main memory.
+\section{Related Work}
+The work most closely related to our work is \cite{alireza_2020}. The work
+performs a substantial analysis of the Intel DDIO implementation. Their
+experiments consider different types of applications executed under different
+cache partitioning schemes. The major takeaway from their work that we
+capitalized on was that there is no \textit{one-size-fits-all} cache
+partitioning policy. Thus we implement a solution that allows an application to
+customize its use of the cache, tailored to its specific needs. On the front of
+fine-grained cache-partioning, there are two main directions - software based
+cache partitioning based on colored pages \cite{herter}, \cite{sherwood} and
+hardware based way partitioning (such as Intel RDT) \cite{chen}, \cite{assaf}.
+The work closest to our implementation is \cite{swap}, which also proposes a
+fine-grained cache partitioning scheme. But their work does not consider the
+effect of this scheme on networked applications. Further the implementation is
+not performed using Intel RDT (which is a more mainstream implementation of
+hardware cache partitioning) and also does not take into the effect of
+hypervisor (necessary for safe isolation of applications).
 
-\textbf{LLC Misses.} This is the second event that can be used to capture the 
+\section{Future Work}
 
-Finally, we also measure application level benchmarks such as bandwidth and
-latency of requests served, since finally any improvement in the software should
-result in an observed improvement in the client side performance. We present our
-results and discuss our observations below.
-
-\section{Conclusion and Future Work}
-
-%\section{Introduction}
-%ACM's consolidated article template, introduced in 2017, provides a
-%consistent \LaTeX\ style for use across ACM publications, and
-%incorporates accessibility and metadata-extraction functionality
-%necessary for future Digital Library endeavors. Numerous ACM and
-%SIG-specific \LaTeX\ templates have been examined, and their unique
-%features incorporated into this single new template.
-%
-%If you are new to publishing with ACM, this document is a valuable
-%guide to the process of preparing your work for publication. If you
-%have published with ACM before, this document provides insight and
-%instruction into more recent changes to the article template.
-%
-%The ``\verb|acmart|'' document class can be used to prepare articles
-%for any ACM publication --- conference or journal, and for any stage
-%of publication, from review to final ``camera-ready'' copy, to the
-%author's own version, with {\itshape very} few changes to the source.
-%
-%\section{Template Overview}
-%As noted in the introduction, the ``\verb|acmart|'' document class can
-%be used to prepare many different kinds of documentation --- a
-%double-blind initial submission of a full-length technical paper, a
-%two-page SIGGRAPH Emerging Technologies abstract, a ``camera-ready''
-%journal article, a SIGCHI Extended Abstract, and more --- all by
-%selecting the appropriate {\itshape template style} and {\itshape
-%  template parameters}.
-%
-%This document will explain the major features of the document
-%class. For further information, the {\itshape \LaTeX\ User's Guide} is
-%available from
-%\url{https://www.acm.org/publications/proceedings-template}.
-%
-%\subsection{Template Styles}
-%
-%The primary parameter given to the ``\verb|acmart|'' document class is
-%the {\itshape template style} which corresponds to the kind of publication
-%or SIG publishing the work. This parameter is enclosed in square
-%brackets and is a part of the {\verb|documentclass|} command:
-%\begin{verbatim}
-%  \documentclass[STYLE]{acmart}
-%\end{verbatim}
-%
-%Journals use one of three template styles. All but three ACM journals
-%use the {\verb|acmsmall|} template style:
-%\begin{itemize}
-%\item {\texttt{acmsmall}}: The default journal template style.
-%\item {\texttt{acmlarge}}: Used by JOCCH and TAP.
-%\item {\texttt{acmtog}}: Used by TOG.
-%\end{itemize}
-%
-%The majority of conference proceedings documentation will use the {\verb|acmconf|} template style.
-%\begin{itemize}
-%\item {\texttt{acmconf}}: The default proceedings template style.
-%\item{\texttt{sigchi}}: Used for SIGCHI conference articles.
-%\item{\texttt{sigchi-a}}: Used for SIGCHI ``Extended Abstract'' articles.
-%\item{\texttt{sigplan}}: Used for SIGPLAN conference articles.
-%\end{itemize}
-%
-%\subsection{Template Parameters}
-%
-%In addition to specifying the {\itshape template style} to be used in
-%formatting your work, there are a number of {\itshape template parameters}
-%which modify some part of the applied template style. A complete list
-%of these parameters can be found in the {\itshape \LaTeX\ User's Guide.}
-%
-%Frequently-used parameters, or combinations of parameters, include:
-%\begin{itemize}
-%\item {\texttt{anonymous,review}}: Suitable for a ``double-blind''
-%  conference submission. Anonymizes the work and includes line
-%  numbers. Use with the \texttt{\acmSubmissionID} command to print the
-%  submission's unique ID on each page of the work.
-%\item{\texttt{authorversion}}: Produces a version of the work suitable
-%  for posting by the author.
-%\item{\texttt{screen}}: Produces colored hyperlinks.
-%\end{itemize}
-%
-%This document uses the following string as the first command in the
-%source file:
-%\begin{verbatim}
-%\documentclass[sigconf]{acmart}
-%\end{verbatim}
-%
-%\section{Modifications}
-%
-%Modifying the template --- including but not limited to: adjusting
-%margins, typeface sizes, line spacing, paragraph and list definitions,
-%and the use of the \verb|\vspace| command to manually adjust the
-%vertical spacing between elements of your work --- is not allowed.
-%
-%{\bfseries Your document will be returned to you for revision if
-%  modifications are discovered.}
-%
-%\section{Typefaces}
-%
-%The ``\verb|acmart|'' document class requires the use of the
-%``Libertine'' typeface family. Your \TeX\ installation should include
-%this set of packages. Please do not substitute other typefaces. The
-%``\verb|lmodern|'' and ``\verb|ltimes|'' packages should not be used,
-%as they will override the built-in typeface families.
-%
-%\section{Title Information}
-%
-%The title of your work should use capital letters appropriately -
-%\url{https://capitalizemytitle.com/} has useful rules for
-%capitalization. Use the {\verb|title|} command to define the title of
-%your work. If your work has a subtitle, define it with the
-%{\verb|subtitle|} command.  Do not insert line breaks in your title.
-%
-%If your title is lengthy, you must define a short version to be used
-%in the page headers, to prevent overlapping text. The \verb|title|
-%command has a ``short title'' parameter:
-%\begin{verbatim}
-%  \title[short title]{full title}
-%\end{verbatim}
-%
-%\section{Authors and Affiliations}
-%
-%Each author must be defined separately for accurate metadata
-%identification.  As an exception, multiple authors may share one
-%affiliation. Authors' names should not be abbreviated; use full first
-%names wherever possible. Include authors' e-mail addresses whenever
-%possible.
-%
-%Grouping authors' names or e-mail addresses, or providing an ``e-mail
-%alias,'' as shown below, is not acceptable:
-%\begin{verbatim}
-%  \author{Brooke Aster, David Mehldau}
-%  \email{dave,judy,steve@university.edu}
-%  \email{firstname.lastname@phillips.org}
-%\end{verbatim}
-%
-%The \verb|authornote| and \verb|authornotemark| commands allow a note
-%to apply to multiple authors --- for example, if the first two authors
-%of an article contributed equally to the work.
-%
-%If your author list is lengthy, you must define a shortened version of
-%the list of authors to be used in the page headers, to prevent
-%overlapping text. The following command should be placed just after
-%the last \verb|\author{}| definition:
-%\begin{verbatim}
-%  \renewcommand{\shortauthors}{McCartney, et al.}
-%\end{verbatim}
-%Omitting this command will force the use of a concatenated list of all
-%of the authors' names, which may result in overlapping text in the
-%page headers.
-%
-%The article template's documentation, available at
-%\url{https://www.acm.org/publications/proceedings-template}, has a
-%complete explanation of these commands and tips for their effective
-%use.
-%
-%Note that authors' addresses are mandatory for journal articles.
-%
-%\section{Rights Information}
-%
-%Authors of any work published by ACM will need to complete a rights
-%form. Depending on the kind of work, and the rights management choice
-%made by the author, this may be copyright transfer, permission,
-%license, or an OA (open access) agreement.
-%
-%Regardless of the rights management choice, the author will receive a
-%copy of the completed rights form once it has been submitted. This
-%form contains \LaTeX\ commands that must be copied into the source
-%document. When the document source is compiled, these commands and
-%their parameters add formatted text to several areas of the final
-%document:
-%\begin{itemize}
-%\item the ``ACM Reference Format'' text on the first page.
-%\item the ``rights management'' text on the first page.
-%\item the conference information in the page header(s).
-%\end{itemize}
-%
-%Rights information is unique to the work; if you are preparing several
-%works for an event, make sure to use the correct set of commands with
-%each of the works.
-%
-%The ACM Reference Format text is required for all articles over one
-%page in length, and is optional for one-page articles (abstracts).
-%
-%\section{CCS Concepts and User-Defined Keywords}
-%
-%Two elements of the ``acmart'' document class provide powerful
-%taxonomic tools for you to help readers find your work in an online
-%search.
-%
-%The ACM Computing Classification System ---
-%\url{https://www.acm.org/publications/class-2012} --- is a set of
-%classifiers and concepts that describe the computing
-%discipline. Authors can select entries from this classification
-%system, via \url{https://dl.acm.org/ccs/ccs.cfm}, and generate the
-%commands to be included in the \LaTeX\ source.
-%
-%User-defined keywords are a comma-separated list of words and phrases
-%of the authors' choosing, providing a more flexible way of describing
-%the research being presented.
-%
-%CCS concepts and user-defined keywords are required for for all
-%articles over two pages in length, and are optional for one- and
-%two-page articles (or abstracts).
-%
-%\section{Sectioning Commands}
-%
-%Your work should use standard \LaTeX\ sectioning commands:
-%\verb|section|, \verb|subsection|, \verb|subsubsection|, and
-%\verb|paragraph|. They should be numbered; do not remove the numbering
-%from the commands.
-%
-%Simulating a sectioning command by setting the first word or words of
-%a paragraph in boldface or italicized text is {\bfseries not allowed.}
-%
-%\section{Tables}
-%
-%The ``\verb|acmart|'' document class includes the ``\verb|booktabs|''
-%package --- \url{https://ctan.org/pkg/booktabs} --- for preparing
-%high-quality tables.
-%
-%Table captions are placed {\itshape above} the table.
-%
-%Because tables cannot be split across pages, the best placement for
-%them is typically the top of the page nearest their initial cite.  To
-%ensure this proper ``floating'' placement of tables, use the
-%environment \textbf{table} to enclose the table's contents and the
-%table caption.  The contents of the table itself must go in the
-%\textbf{tabular} environment, to be aligned properly in rows and
-%columns, with the desired horizontal and vertical rules.  Again,
-%detailed instructions on \textbf{tabular} material are found in the
-%\textit{\LaTeX\ User's Guide}.
-%
-%Immediately following this sentence is the point at which
-%Table~\ref{tab:freq} is included in the input file; compare the
-%placement of the table here with the table in the printed output of
-%this document.
-%
-%\begin{table}
-%  \caption{Frequency of Special Characters}
-%  \label{tab:freq}
-%  \begin{tabular}{ccl}
-%    \toprule
-%    Non-English or Math&Frequency&Comments\\
-%    \midrule
-%    \O & 1 in 1,000& For Swedish names\\
-%    $\pi$ & 1 in 5& Common in math\\
-%    \$ & 4 in 5 & Used in business\\
-%    $\Psi^2_1$ & 1 in 40,000& Unexplained usage\\
-%  \bottomrule
-%\end{tabular}
-%\end{table}
-%
-%To set a wider table, which takes up the whole width of the page's
-%live area, use the environment \textbf{table*} to enclose the table's
-%contents and the table caption.  As with a single-column table, this
-%wide table will ``float'' to a location deemed more
-%desirable. Immediately following this sentence is the point at which
-%Table~\ref{tab:commands} is included in the input file; again, it is
-%instructive to compare the placement of the table here with the table
-%in the printed output of this document.
-%
-%\begin{table*}
-%  \caption{Some Typical Commands}
-%  \label{tab:commands}
-%  \begin{tabular}{ccl}
-%    \toprule
-%    Command &A Number & Comments\\
-%    \midrule
-%    \texttt{{\char'134}author} & 100& Author \\
-%    \texttt{{\char'134}table}& 300 & For tables\\
-%    \texttt{{\char'134}table*}& 400& For wider tables\\
-%    \bottomrule
-%  \end{tabular}
-%\end{table*}
-%
-%Always use midrule to separate table header rows from data rows, and
-%use it only for this purpose. This enables assistive technologies to
-%recognise table headers and support their users in navigating tables
-%more easily.
-%
-%\section{Math Equations}
-%You may want to display math equations in three distinct styles:
-%inline, numbered or non-numbered display.  Each of the three are
-%discussed in the next sections.
-%
-%\subsection{Inline (In-text) Equations}
-%A formula that appears in the running text is called an inline or
-%in-text formula.  It is produced by the \textbf{math} environment,
-%which can be invoked with the usual
-%\texttt{{\char'134}begin\,\ldots{\char'134}end} construction or with
-%the short form \texttt{\$\,\ldots\$}. You can use any of the symbols
-%and structures, from $\alpha$ to $\omega$, available in
-%\LaTeX~\cite{Lamport:LaTeX}; this section will simply show a few
-%examples of in-text equations in context. Notice how this equation:
-%\begin{math}
-%  \lim_{n\rightarrow \infty}x=0
-%\end{math},
-%set here in in-line math style, looks slightly different when
-%set in display style.  (See next section).
-%
-%\subsection{Display Equations}
-%A numbered display equation---one set off by vertical space from the
-%text and centered horizontally---is produced by the \textbf{equation}
-%environment. An unnumbered display equation is produced by the
-%\textbf{displaymath} environment.
-%
-%Again, in either environment, you can use any of the symbols and
-%structures available in \LaTeX\@; this section will just give a couple
-%of examples of display equations in context.  First, consider the
-%equation, shown as an inline equation above:
-%\begin{equation}
-%  \lim_{n\rightarrow \infty}x=0
-%\end{equation}
-%Notice how it is formatted somewhat differently in
-%the \textbf{displaymath}
-%environment.  Now, we'll enter an unnumbered equation:
-%\begin{displaymath}
-%  \sum_{i=0}^{\infty} x + 1
-%\end{displaymath}
-%and follow it with another numbered equation:
-%\begin{equation}
-%  \sum_{i=0}^{\infty}x_i=\int_{0}^{\pi+2} f
-%\end{equation}
-%just to demonstrate \LaTeX's able handling of numbering.
-%
-%\section{Figures}
-%
-%The ``\verb|figure|'' environment should be used for figures. One or
-%more images can be placed within a figure. If your figure contains
-%third-party material, you must clearly identify it as such, as shown
-%in the example below.
-%%\begin{figure}[h]
-%%  \centering
-%%  \includegraphics[width=\linewidth]{sample-franklin}
-%%  \caption{1907 Franklin Model D roadster. Photograph by Harris \&
-%%    Ewing, Inc. [Public domain], via Wikimedia
-%%    Commons. (\url{https://goo.gl/VLCRBB}).}
-%%  \Description{A woman and a girl in white dresses sit in an open car.}
-%%\end{figure}
-%
-%Your figures should contain a caption which describes the figure to
-%the reader.
-%
-%Figure captions are placed {\itshape below} the figure.
-%
-%Every figure should also have a figure description unless it is purely
-%decorative. These descriptions convey what’s in the image to someone
-%who cannot see it. They are also used by search engine crawlers for
-%indexing images, and when images cannot be loaded.
-%
-%A figure description must be unformatted plain text less than 2000
-%characters long (including spaces).  {\bfseries Figure descriptions
-%  should not repeat the figure caption – their purpose is to capture
-%  important information that is not already provided in the caption or
-%  the main text of the paper.} For figures that convey important and
-%complex new information, a short text description may not be
-%adequate. More complex alternative descriptions can be placed in an
-%appendix and referenced in a short figure description. For example,
-%provide a data table capturing the information in a bar chart, or a
-%structured list representing a graph.  For additional information
-%regarding how best to write figure descriptions and why doing this is
-%so important, please see
-%\url{https://www.acm.org/publications/taps/describing-figures/}.
-%
-%\subsection{The ``Teaser Figure''}
-%
-%A ``teaser figure'' is an image, or set of images in one figure, that
-%are placed after all author and affiliation information, and before
-%the body of the article, spanning the page. If you wish to have such a
-%figure in your article, place the command immediately before the
-%\verb|\maketitle| command:
-%\begin{verbatim}
-%  \begin{teaserfigure}
-%    \includegraphics[width=\textwidth]{sampleteaser}
-%    \caption{figure caption}
-%    \Description{figure description}
-%  \end{teaserfigure}
-%\end{verbatim}
-%
-%\section{Citations and Bibliographies}
-%
-%The use of \BibTeX\ for the preparation and formatting of one's
-%references is strongly recommended. Authors' names should be complete
-%--- use full first names (``Donald E. Knuth'') not initials
-%(``D. E. Knuth'') --- and the salient identifying features of a
-%reference should be included: title, year, volume, number, pages,
-%article DOI, etc.
-%
-%The bibliography is included in your source document with these two
-%commands, placed just before the \verb|\end{document}| command:
-%\begin{verbatim}
-%  \bibliographystyle{ACM-Reference-Format}
-%  \bibliography{bibfile}
-%\end{verbatim}
-%where ``\verb|bibfile|'' is the name, without the ``\verb|.bib|''
-%suffix, of the \BibTeX\ file.
-%
-%Citations and references are numbered by default. A small number of
-%ACM publications have citations and references formatted in the
-%``author year'' style; for these exceptions, please include this
-%command in the {\bfseries preamble} (before the command
-%``\verb|\begin{document}|'') of your \LaTeX\ source:
-%\begin{verbatim}
-%  \citestyle{acmauthoryear}
-%\end{verbatim}
-%
-%
-%  Some examples.  A paginated journal article \cite{Abril07}, an
-%  enumerated journal article \cite{Cohen07}, a reference to an entire
-%  issue \cite{JCohen96}, a monograph (whole book) \cite{Kosiur01}, a
-%  monograph/whole book in a series (see 2a in spec. document)
-%  \cite{Harel79}, a divisible-book such as an anthology or compilation
-%  \cite{Editor00} followed by the same example, however we only output
-%  the series if the volume number is given \cite{Editor00a} (so
-%  Editor00a's series should NOT be present since it has no vol. no.),
-%  a chapter in a divisible book \cite{Spector90}, a chapter in a
-%  divisible book in a series \cite{Douglass98}, a multi-volume work as
-%  book \cite{Knuth97}, a couple of articles in a proceedings (of a
-%  conference, symposium, workshop for example) (paginated proceedings
-%  article) \cite{Andler79, Hagerup1993}, a proceedings article with
-%  all possible elements \cite{Smith10}, an example of an enumerated
-%  proceedings article \cite{VanGundy07}, an informally published work
-%  \cite{Harel78}, a couple of preprints \cite{Bornmann2019,
-%    AnzarootPBM14}, a doctoral dissertation \cite{Clarkson85}, a
-%  master's thesis: \cite{anisi03}, an online document / world wide web
-%  resource \cite{Thornburg01, Ablamowicz07, Poker06}, a video game
-%  (Case 1) \cite{Obama08} and (Case 2) \cite{Novak03} and \cite{Lee05}
-%  and (Case 3) a patent \cite{JoeScientist001}, work accepted for
-%  publication \cite{rous08}, 'YYYYb'-test for prolific author
-%  \cite{SaeediMEJ10} and \cite{SaeediJETC10}. Other cites might
-%  contain 'duplicate' DOI and URLs (some SIAM articles)
-%  \cite{Kirschmer:2010:AEI:1958016.1958018}. Boris / Barbara Beeton:
-%  multi-volume works as books \cite{MR781536} and \cite{MR781537}. A
-%  couple of citations with DOIs:
-%  \cite{2004:ITE:1009386.1010128,Kirschmer:2010:AEI:1958016.1958018}. Online
-%  citations: \cite{TUGInstmem, Thornburg01, CTANacmart}.
-%  Artifacts: \cite{R} and \cite{UMassCitations}.
-%
-%\section{Acknowledgments}
-%
-%Identification of funding sources and other support, and thanks to
-%individuals and groups that assisted in the research and the
-%preparation of the work should be included in an acknowledgment
-%section, which is placed just before the reference section in your
-%document.
-%
-%This section has a special environment:
-%\begin{verbatim}
-%  \begin{acks}
-%  ...
-%  \end{acks}
-%\end{verbatim}
-%so that the information contained therein can be more easily collected
-%during the article metadata extraction phase, and to ensure
-%consistency in the spelling of the section heading.
-%
-%Authors should not prepare this section as a numbered or unnumbered {\verb|\section|}; please use the ``{\verb|acks|}'' environment.
-%
-%\section{Appendices}
-%
-%If your work needs an appendix, add it before the
-%``\verb|\end{document}|'' command at the conclusion of your source
-%document.
-%
-%Start the appendix with the ``\verb|appendix|'' command:
-%\begin{verbatim}
-%  \appendix
-%\end{verbatim}
-%and note that in the appendix, sections are lettered, not
-%numbered. This document has two appendices, demonstrating the section
-%and subsection identification method.
-%
-%\section{Multi-language papers}
-%
-%Papers may be written in languages other than English or include
-%titles, subtitles, keywords and abstracts in different languages (as a
-%rule, a paper in a language other than English should include an
-%English title and an English abstract).  Use \verb|language=...| for
-%every language used in the paper.  The last language indicated is the
-%main language of the paper.  For example, a French paper with
-%additional titles and abstracts in English and German may start with
-%the following command
-%\begin{verbatim}
-%\documentclass[sigconf, language=english, language=german,
-%               language=french]{acmart}
-%\end{verbatim}
-%
-%The title, subtitle, keywords and abstract will be typeset in the main
-%language of the paper.  The commands \verb|\translatedXXX|, \verb|XXX|
-%begin title, subtitle and keywords, can be used to set these elements
-%in the other languages.  The environment \verb|translatedabstract| is
-%used to set the translation of the abstract.  These commands and
-%environment have a mandatory first argument: the language of the
-%second argument.  See \verb|sample-sigconf-i13n.tex| file for examples
-%of their usage.
-%
-%\section{SIGCHI Extended Abstracts}
-%
-%The ``\verb|sigchi-a|'' template style (available only in \LaTeX\ and
-%not in Word) produces a landscape-orientation formatted article, with
-%a wide left margin. Three environments are available for use with the
-%``\verb|sigchi-a|'' template style, and produce formatted output in
-%the margin:
-%\begin{description}
-%\item[\texttt{sidebar}:]  Place formatted text in the margin.
-%\item[\texttt{marginfigure}:] Place a figure in the margin.
-%\item[\texttt{margintable}:] Place a table in the margin.
-%\end{description}
-%
-%%%
-%%% The acknowledgments section is defined using the "acks" environment
-%%% (and NOT an unnumbered section). This ensures the proper
-%%% identification of the section in the article metadata, and the
-%%% consistent spelling of the heading.
 \begin{acks}
     To Prof. Muhammad Shahbaz for conducting such a great course and Sharuna
     Anandraj, Darwin Kamanuru, K M A Solaiman and Kai Ling for helping out
@@ -777,21 +473,44 @@ results and discuss our observations below.
 
 \section{Contributions}
 
-In this section, we provide the details of the contributions of each author.
-
 \subsection{Jiangqiong Liu}
+Worked on the handling the measurement across the entire project. Implemented
+perf scripts to automate collection of hardware counter events for all
+applications and perform the post-processing to report the results. Correlated
+performance changes in application based on measurement results.
 
 \subsection{Joshua Reprogle}
+Implemented an end-to-end Websocket server in C++ and used it to implement a
+chat server. The C++ server was written without dynamic memory allocation to
+carefully control the placement of memory buffers. Identified networking parts
+of the application and performed $\texttt{set\_partition}$ instrumentation.
 
 \subsection{Vedaant Rajoo}
+Implemented a replicated, in-memory key-value store using C++. Analyzed
+networking and computational parts of the application and performed
+$\texttt{set\_partition}$ instrumentation.
 
 \subsection{Sowmya Jayaram Iyer}
+Implemented machine learning models for packet based classification. Executed
+these models on real-world traces and ported them to run as Unikraft kernels.
+Identified the $\texttt{set\_partition}$ instrumentation points for compute
+bound parts of the application.
 
 \subsection{Keerthana Ashokkumar}
+Designed and implemented a replicated, in-memory key-value store using Java.
+Implemented two phase commit based atomic updates and leader server replication.
+Assisted in the C++ implementation of the in-memory store and identified
+networking parts of the application.
 
 \subsection{Anmol Sahoo}
+Designed and implemented the Intel RDT based cache partitioning scheme as a KVM
+patch in the Linux kernel. Exposed the userspace API as VMCALLs in KVM. Ported
+the necessary libraries to Unikraft (rpclib for rpc, tcp/ip for sockets, tvm for
+deep learning / machine learning). Performed end-to-end execution and testing of
+all applications.
 
 \end{document}
+
 \endinput
 %%
 %% End of file `sample-sigconf.tex'.

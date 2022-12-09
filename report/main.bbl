@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{1}
+\begin{thebibliography}{8}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -37,6 +37,27 @@
 \providecommand\natexlab[1]{#1}
 \providecommand\showeprint[2][]{arXiv:#2}
 
+\bibitem[Chen et~al\mbox{.}(2020)]%
+        {chen}
+\bibfield{author}{\bibinfo{person}{Ruobing Chen}, \bibinfo{person}{Jinping Wu},
+  \bibinfo{person}{Haosen Shi}, \bibinfo{person}{Yusen Li},
+  \bibinfo{person}{Haiyan Yin}, \bibinfo{person}{Shanjiang Tang},
+  \bibinfo{person}{Xiaoguang Liu}, {and} \bibinfo{person}{Gang Wang}.}
+  \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{Deep Learning Assisted Resource Partitioning for
+  Improving Performance on Commodity Servers}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the ACM International Conference on
+  Parallel Architectures and Compilation Techniques}} (Virtual Event, GA, USA)
+  \emph{(\bibinfo{series}{PACT '20})}. \bibinfo{publisher}{Association for
+  Computing Machinery}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{153–154}.
+\newblock
+\showISBNx{9781450380751}
+\urldef\tempurl%
+\url{https://doi.org/10.1145/3410463.3414668}
+\showDOI{\tempurl}
+
+
 \bibitem[Farshin et~al\mbox{.}(2020)]%
         {alireza_2020}
 \bibfield{author}{\bibinfo{person}{Alireza Farshin}, \bibinfo{person}{Amir
@@ -50,6 +71,108 @@
   \bibinfo{articleno}{46}, \bibinfo{numpages}{17}~pages.
 \newblock
 \showISBNx{978-1-939133-14-4}
+
+
+\bibitem[Funaro et~al\mbox{.}(2016)]%
+        {assaf}
+\bibfield{author}{\bibinfo{person}{Liran Funaro}, \bibinfo{person}{Orna~Agmon
+  Ben-Yehuda}, {and} \bibinfo{person}{Assaf Schuster}.}
+  \bibinfo{year}{2016}\natexlab{}.
+\newblock \showarticletitle{Ginseng: Market-Driven LLC Allocation}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the 2016 USENIX Conference on Usenix
+  Annual Technical Conference}} (Denver, CO, USA)
+  \emph{(\bibinfo{series}{USENIX ATC '16})}. \bibinfo{publisher}{USENIX
+  Association}, \bibinfo{address}{USA}, \bibinfo{pages}{295–308}.
+\newblock
+\showISBNx{9781931971300}
+
+
+\bibitem[Herter et~al\mbox{.}(2011)]%
+        {herter}
+\bibfield{author}{\bibinfo{person}{Jorg Herter}, \bibinfo{person}{Peter
+  Backes}, \bibinfo{person}{Florian Haupenthal}, {and} \bibinfo{person}{Jan
+  Reineke}.} \bibinfo{year}{2011}\natexlab{}.
+\newblock \showarticletitle{CAMA: A Predictable Cache-Aware Memory Allocator}.
+  In \bibinfo{booktitle}{\emph{Proceedings of the 2011 23rd Euromicro
+  Conference on Real-Time Systems}} \emph{(\bibinfo{series}{ECRTS '11})}.
+  \bibinfo{publisher}{IEEE Computer Society}, \bibinfo{address}{USA},
+  \bibinfo{pages}{23–32}.
+\newblock
+\showISBNx{9780769544427}
+\urldef\tempurl%
+\url{https://doi.org/10.1109/ECRTS.2011.11}
+\showDOI{\tempurl}
+
+
+\bibitem[Kuenzer et~al\mbox{.}(2021)]%
+        {unikraft}
+\bibfield{author}{\bibinfo{person}{Simon Kuenzer}, \bibinfo{person}{Vlad-Andrei
+  B\u{a}doiu}, \bibinfo{person}{Hugo Lefeuvre}, \bibinfo{person}{Sharan
+  Santhanam}, \bibinfo{person}{Alexander Jung}, \bibinfo{person}{Gaulthier
+  Gain}, \bibinfo{person}{Cyril Soldani}, \bibinfo{person}{Costin Lupu},
+  \bibinfo{person}{\c{S}tefan Teodorescu}, \bibinfo{person}{Costi
+  R\u{a}ducanu}, \bibinfo{person}{Cristian Banu}, \bibinfo{person}{Laurent
+  Mathy}, \bibinfo{person}{R\u{a}zvan Deaconescu}, \bibinfo{person}{Costin
+  Raiciu}, {and} \bibinfo{person}{Felipe Huici}.}
+  \bibinfo{year}{2021}\natexlab{}.
+\newblock \showarticletitle{Unikraft: Fast, Specialized Unikernels the Easy
+  Way}. In \bibinfo{booktitle}{\emph{Proceedings of the Sixteenth European
+  Conference on Computer Systems}} (Online Event, United Kingdom)
+  \emph{(\bibinfo{series}{EuroSys '21})}. \bibinfo{publisher}{Association for
+  Computing Machinery}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{376–394}.
+\newblock
+\showISBNx{9781450383349}
+\urldef\tempurl%
+\url{https://doi.org/10.1145/3447786.3456248}
+\showDOI{\tempurl}
+
+
+\bibitem[Sherwood et~al\mbox{.}(1999)]%
+        {sherwood}
+\bibfield{author}{\bibinfo{person}{Timothy Sherwood}, \bibinfo{person}{Brad
+  Calder}, {and} \bibinfo{person}{Joel Emer}.} \bibinfo{year}{1999}\natexlab{}.
+\newblock \showarticletitle{Reducing Cache Misses Using Hardware and Software
+  Page Placement}. In \bibinfo{booktitle}{\emph{Proceedings of the 13th
+  International Conference on Supercomputing}} (Rhodes, Greece)
+  \emph{(\bibinfo{series}{ICS '99})}. \bibinfo{publisher}{Association for
+  Computing Machinery}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{155–164}.
+\newblock
+\showISBNx{158113164X}
+\urldef\tempurl%
+\url{https://doi.org/10.1145/305138.305189}
+\showDOI{\tempurl}
+
+
+\bibitem[Tootoonchian et~al\mbox{.}(2018)]%
+        {tootoonchian-resq}
+\bibfield{author}{\bibinfo{person}{Amin Tootoonchian}, \bibinfo{person}{Aurojit
+  Panda}, \bibinfo{person}{Chang Lan}, \bibinfo{person}{Melvin Walls},
+  \bibinfo{person}{Katerina Argyraki}, \bibinfo{person}{Sylvia Ratnasamy},
+  {and} \bibinfo{person}{Scott Shenker}.} \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{ResQ: Enabling SLOs in Network Function
+  Virtualization}. In \bibinfo{booktitle}{\emph{Proceedings of the 15th USENIX
+  Conference on Networked Systems Design and Implementation}} (Renton, WA, USA)
+  \emph{(\bibinfo{series}{NSDI'18})}. \bibinfo{publisher}{USENIX Association},
+  \bibinfo{address}{USA}, \bibinfo{pages}{283–297}.
+\newblock
+\showISBNx{9781931971430}
+
+
+\bibitem[Wang et~al\mbox{.}(2017)]%
+        {swap}
+\bibfield{author}{\bibinfo{person}{Xiaodong Wang}, \bibinfo{person}{Shuang
+  Chen}, \bibinfo{person}{Jeff Setter}, {and} \bibinfo{person}{José~F.
+  Martínez}.} \bibinfo{year}{2017}\natexlab{}.
+\newblock \showarticletitle{SWAP: Effective Fine-Grain Management of Shared
+  Last-Level Caches with Minimum Hardware Support}. In
+  \bibinfo{booktitle}{\emph{2017 IEEE International Symposium on High
+  Performance Computer Architecture (HPCA)}}. \bibinfo{pages}{121--132}.
+\newblock
+\urldef\tempurl%
+\url{https://doi.org/10.1109/HPCA.2017.65}
+\showDOI{\tempurl}
 
 
 \end{thebibliography}
