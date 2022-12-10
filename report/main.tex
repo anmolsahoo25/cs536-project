@@ -164,7 +164,7 @@ Concretely, our contributions are as follows -
     \item An interface by which networking applications can demarcate regions of
         their code that perform network IO
     \item An implementation that allows executing such applications with
-        fine-grained cache partitioning in a unikernel environment
+        fine-grained cache partitioning as a unikernel
     \item A set of benchmarks and an evaluation strategy for checking the
         performance of our solution
 \end{enumerate}
@@ -381,17 +381,29 @@ space available for the remaining parts of the application. Thus, even though
 the performance of the networking parts improves the overall application
 performance may suffer. Moreover, since our dynamic cache partitioning scheme is
 implemented using hypercalls in an hypervisor, there is an overhead associated
-with the VM exit. If these events are too frequenct, it may add a
-non-negligible overhead leading to an increase in runtime. Given this, it would
-not be possible to determine the impact of our work by simply measuring
-wall-clock time. While an improvement in wall-clock time is beneficial, it does
-not provide any insight into which part of our solution resulted in this
-improvement. In the case that performance is reduced, we need a method of
-diagnosing what led to the decrease in performance. Thus we use hardware
-performance counter events to benchmark different aspects of an application
-which we believe capture the performance of our implementation. First, we focus
-on PCIE Writes / Reads from the last level cache (LLC). This is the primary
-event that identifies if our solution is working. This event provides
+with the VM exit. If these events are too frequent, it may add a non-negligible
+overhead leading to an increase in runtime. Given this, it would not be possible
+to determine the impact of our work by simply measuring wall-clock time. While
+an improvement in wall-clock time is beneficial, it does not provide any insight
+into which part of our solution resulted in this improvement. In the case that
+performance is reduced, we need a method of diagnosing what led to the decrease
+in performance. To deal with this, we use statistical profiling of hardware
+performance counter events to benchmark different aspects of an application. We
+briefly hardware counter events and how they are recorded to better understand
+how we use it in our evaluation method. Modern processors have hardware
+counters, that count the number of occurences of certain hardware events. These
+counters can capture counts ranging from CPU events such as instructions
+executed, cycles spent stalling and others, all the way upto system events such
+as memory requests, cache hits and misses and so on. Since constantly reading
+these counters will have a very high overhead, the processor can be programmed
+to generate an interrupt when a certain count is reached. Thus, this is referred
+to as statistical profiling, since we only capture a subset of the events. But
+the relative values of these counts can give us a good idea if the frequency of
+a certain event increased or decreased. Thus we use statistical profiling,
+through tools like $\texttt{perf}$ to capture the frequency of certain events
+that we believe helps us understand the behavior of our application. First, we
+focus on PCIE Writes / Reads from the last level cache (LLC). This is the
+primary event that identifies if our solution is working. This event provides
 information about the number of PCIE accesses that were serviced from the LLC.
 This is important because if we are servicing more requests from the LLC, this
 implies that more network packets are staying resident in the cache and directly
@@ -408,28 +420,33 @@ creates a chat server. (2) \textbf{ML}: This program implements different ML
 algorithms to perform packet based quality-of-service classification (3)
 \textbf{KV} : This program implements a replicated key-value store using
 leader-server replication (4) \textbf{DL} : This program implements a deep
-learning inference workload for image recognition
-We believe this set of benchmarks are representative because they capture
-different types of workloads. \textbf{CS} is mostly network IO with little
-computation since it only performs Websocket packet-framing and forwarding over
-TCP. \textbf{ML} and \textbf{DL} represent a balance between network IO and
-compute, since the inference procedure requires non-trivial amounts of
-computation. Finally, \textbf{KV} represents a combination of network IO and
-disk IO, since the records are stored on the filesystem. Thus, evaluating the
-performance of our solution over these benchmarks should help us understand how
-it works. All of our benchmarks are executed on an AWS m5zn.metal machine with
-48 logical cores, running on Amazon Linux 2, using QEMU 6.0.0 and Unikraft
-0.10.0. We have 4 test scenarios - (1) \textbf{OS} : run the application on the
-OS, (2) \textbf{OS+PT} : run the application on the OS stack + fine-grained
-partitioning, (3) \textbf{UK} : run the application as a unikernel, (4)
-\textbf{UK+PT} : run the application as a unikernel + fine-grained partitioning.
-This will help to evaluate the effect of each component of our solution. In the
-following figures, we present and discuss our results. Note that the absolute
-numbers of the hardware counters are normalized, to make comparison easier. In
-Fig.4, we see that across the benchmarks the PCIe hits stay constant in the
-\textbf{OS+PT} case, but increase in the \textbf{UK} and \textbf{UK+PT} case.
-This shows that our cache partitioning has the effect of isolating network
-buffers, so that PCIe hits are increased.
+learning inference workload for image recognition We believe this set of
+benchmarks are representative because they capture different types of workloads.
+\textbf{CS} is mostly network IO with little computation since it only performs
+Websocket packet-framing and forwarding over TCP. \textbf{ML} and \textbf{DL}
+represent a balance between network IO and compute, since the inference
+procedure requires non-trivial amounts of computation. Finally, \textbf{KV}
+represents a combination of network IO and disk IO, since the records are stored
+on the filesystem. Thus, evaluating the performance of our solution over these
+benchmarks should help us understand how it works. All of our benchmarks are
+executed on an AWS m5zn.metal machine with 48 logical cores, running on Amazon
+Linux 2, using QEMU 6.0.0 and Unikraft 0.10.0. We have 4 test scenarios - (1)
+\textbf{OS} : run the application on the OS, (2) \textbf{OS+PT} : run the
+application on the OS stack + fine-grained partitioning, (3) \textbf{UK} : run
+the application as a unikernel, (4) \textbf{UK+PT} : run the application as a
+unikernel + fine-grained partitioning. This will help to evaluate the effect of
+each component of our solution. In the following figures, we present and discuss
+our results. Note that the absolute numbers of the hardware counters are
+normalized, to make comparison easier. 
+
+First, we observe the PCIe hits for each benchmark in Fig.4. Across all setups,
+we note that the PCIe hits increases. In the case of \textbf{OS+PT} case, this
+is not significant, implpying that the OS interference is removing any benefits
+that we may observe. In the \textbf{UK} and \textbf{UK+PT} case, we observe that
+the PCIe hits increases. This shows that our cache partitioning has the effect
+of isolating network buffers, so that PCIe hits are increased. The rate of
+increase across different applications is different because of various network
+packet parameters such as size of packets, number of packets received and so on.
 
 \begin{figure}[h]
   \centering
@@ -439,13 +456,17 @@ buffers, so that PCIe hits are increased.
     \caption{PCIe Hits for each benchmark}
 \end{figure}
 
-Next we move to the LLC misses observed under each scheme. As shown in Fig. 5.,
-our partitioning scheme increases the cache misses, whether it is added to
+Next we move to the LLC misses observed for each benchmark. As shown in Fig. 5.,
+LLC misses drop consistently when we move from \textbf{OS} to \textbf{UK}. This
+is because the smaller memory footprint of the unikernel allows more cache space
+for the application, thus reducing the number of cache misses. But, our
+partitioning scheme increases the cache misses, whether it is added to
 \textbf{OS} or \textbf{UK}. This is expected, since the computational parts of
 the application are receiving less cache space, more cache misses are expected.
-It is important to note that going from \textbf{OS} to \textbf{UK} reduces the
-number of cache misses, since getting rid of the OS memory footprint makes
-additional cache available for the application.
+In the case of the compute heavy benchmarks such as \textbf{ML} and \textbf{DL},
+we observe that cache misses are significantly increased, since they perform lot
+of computation. In the case of \textbf{KV} and \textbf{ML}, this is less since
+they are not peforming too much computation and are mostly IO bound.
 
 \begin{figure}[h]
   \centering
@@ -457,15 +478,19 @@ additional cache available for the application.
 
 In Fig. 6, we discuss the results of our throughput experiments. For each
 application, we setup multiple clients who then send requests to saturate the
-link and we check how many requests per second we can serve. We note that while
+link and we check how many requests per second we can serve. We note that
 throughput increases for most benchmarks when going from \textbf{OS} to
-\textbf{UK} due to the smaller memory footprint, only in the case of the
-\textbf{CS} and \textbf{KV} benchmarks do we see a significant increase in the
-performance due to our partitioning scheme. We hypothesize this due to the fact
-that these application mainly perform IO, the partioning scheme improves the IO
-performance, thus an overall performance improvement is obtained. In the
-\textbf{DL} and \textbf{ML} case, it is possible that the smaller cache
-allocation is affecting the computation of the entire result.
+\textbf{UK} due to the smaller memory footprint and less cache contention. In
+the case of the \textbf{CS} and \textbf{KV} benchmarks we see an increase in the
+performance due to our partitioning scheme. But in the case of \textbf{DL} and
+\textbf{ML}, there is a drop in the performance. Our hypothesis is that since
+\textbf{CS}, \textbf{KV} are IO dominated, our scheme isolates the network
+buffer and improves the networking performance which translates to an
+improvement in the overall application performance. obtained. In the \textbf{DL}
+and \textbf{ML} case, it is possible that the smaller cache allocation is
+increasing the time taken to perform the computationally heavy part so much that
+any improvements in the networking part are mitigated. This is reasonable,
+since these programs are very sensitive to the cache size.
 
 \begin{figure}[h]
   \centering
@@ -477,7 +502,11 @@ allocation is affecting the computation of the entire result.
 
 Finally, we observe the P99 latency for the various benchmarks in Fig. 7. As
 observed, the P99 latency improves (smaller is better) for only the \textbf{CS}
-benchmark and gets worse for all others.
+benchmark and gets worse for all others. A similar hypothesis from the
+throughput section applies, where any improvement in the networking parts of the
+code are mitigated by the rest of the application. Moreover, limiting the cache
+space may have the unforeseen effect of evicting some packets, which were
+previously able to be served from the cache, thus increasing the P99 latency.
 
 \begin{figure}[h]
   \centering
@@ -509,28 +538,31 @@ for safe isolation of applications).
 
 We have designed and implemented a solution to reduce the effect of cache
 contention on the performance of network IO and demonstarted our results. While
-the results are not promising, the benchmarks \textbf{CS} and \textbf{KV}
-provide insight into situations where this solution may work. Additionally, it
-also corroborates the claim of \cite{alireza_2020} that heavily CPU bound
-applications do not benefit much from DDIO tuning based on cache partitioning as
-observed in \textbf{ML} and \textbf{DL}. Still, I feel this work opens up
-interesting future directions. The first and most important learning is that
-this technique can be specialized for specific applications such as virtual
-switches, network function virtualization and similar applications which are
-dominated by network IO. Further, the cache allocation policy needs a thorough
-review to ensure that it is performing optimally. This would require digging
-deeper into the cache allocation being performed by our simple round-robin
-algorithm and how it can be improved. On the measurement front, we feel there
-are multiple things that can be improved to make this work better. First, the
-network stack used in the \textbf{OS} and \textbf{UK} setup is different, since
-we could only port a simple TCP/IP stack to the unikernel environment. It would
-be good to have something like DPDK tuned for both the setups, thus giving a
-better comparison. Second, the measurements are performed in noisy environments,
-because the Linux kernel is still running on the cores that are running the
-unikernels. Isolating these cores requires the use of advanced features such as
-ISOLCPUs, which are not available in the EC2 instances that we used. Thus, we
-believe that we have made a case for intra-application cache partitioning and
-unikernels.
+the results are not promising, since we do not see a consistent improvement in
+performance across all the benchmarks, the \textbf{CS} and \textbf{KV}
+benchmarks provide insight into situations where this solution may work.
+Additionally, it also corroborates the claim of \cite{alireza_2020} that heavily
+CPU or memory bound applications do not benefit much from DDIO tuning based on
+cache partitioning as observed in \textbf{ML} and \textbf{DL}. Still, I feel
+this work opens up interesting future directions. The first and most important
+learning is that this technique can be specialized for specific applications
+such as virtual switches, network function virtualization and similar
+applications which are dominated by network IO. Further, the cache allocation
+policy needs a thorough review to ensure that it is performing optimally. This
+would require digging deeper into the cache allocation being performed by our
+simple round-robin algorithm and how it can be improved. On the measurement
+front, we feel there are multiple things that can be improved to make this work
+better. First, the network stack used in the \textbf{OS} and \textbf{UK} setup
+is different, since we could only port a simple TCP/IP stack to the unikernel
+environment. It would be good to have something like DPDK tuned for both the
+setups, thus giving a better comparison. If a fair baseline is established
+between the OS and unikernel setup, then we can be confident that our
+implementation improves the performance of the application. Second, the
+measurements are performed in noisy environments, because the Linux kernel is
+still running on the cores that are running the unikernels. Isolating these
+cores requires the use of advanced features such as ISOLCPUs, which are not
+available in the EC2 instances that we used. Thus, we believe that we have made
+a case for intra-application cache partitioning and unikernels.
 
 \begin{acks}
     To Prof. Muhammad Shahbaz for conducting such a great course and Sharuna

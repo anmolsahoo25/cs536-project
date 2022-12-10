@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.1) (preloaded format=pdflatex 2022.3.24)  9 DEC 2022 22:02
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.1) (preloaded format=pdflatex 2022.3.24)  9 DEC 2022 22:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1148,8 +1148,6 @@ LaTeX Font Info:    Font shape `T1/LinuxBiolinumT-TLF/m/n' will be
 LaTeX Font Info:    Font shape `T1/LinuxBiolinumT-TLF/m/n' will be
 (Font)              scaled to size 7.0pt on input line 347.
  [2.2 <./motivating_example.png>]
-Underfull \vbox (badness 1072) has occurred while \output is active []
-
 <bitmasks.png, id=103, 894.34125pt x 281.05pt>
 File: bitmasks.png Graphic file (type png)
 <use bitmasks.png>
@@ -1163,61 +1161,53 @@ Class acmart Warning: A possible image without description on input line 354.
 <res1.png, id=113, 867.24pt x 433.62pt>
 File: res1.png Graphic file (type png)
 <use res1.png>
-Package pdftex.def Info: res1.png  used on input line 436.
+Package pdftex.def Info: res1.png  used on input line 453.
 (pdftex.def)             Requested size: 241.14749pt x 120.57246pt.
 
 
-Class acmart Warning: A possible image without description on input line 440.
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
+Class acmart Warning: A possible image without description on input line 457.
 
 <res2.png, id=114, 867.24pt x 433.62pt>
 File: res2.png Graphic file (type png)
 <use res2.png>
-Package pdftex.def Info: res2.png  used on input line 452.
+Package pdftex.def Info: res2.png  used on input line 473.
 (pdftex.def)             Requested size: 241.14749pt x 120.57246pt.
 
-Class acmart Warning: A possible image without description on input line 456.
+Class acmart Warning: A possible image without description on input line 477.
 
-<res3.png, id=115, 867.24pt x 433.62pt>
+[4.4 <./res1.png> <./res2.png>]
+<res3.png, id=123, 867.24pt x 433.62pt>
 File: res3.png Graphic file (type png)
 <use res3.png>
-Package pdftex.def Info: res3.png  used on input line 472.
+Package pdftex.def Info: res3.png  used on input line 497.
 (pdftex.def)             Requested size: 241.14749pt x 120.57246pt.
 
-Class acmart Warning: A possible image without description on input line 476.
 
-
-LaTeX Warning: `h' float specifier changed to `ht'.
+Class acmart Warning: A possible image without description on input line 501.
 
 File: res3.png Graphic file (type png)
 <use res3.png>
-Package pdftex.def Info: res3.png  used on input line 484.
+Package pdftex.def Info: res3.png  used on input line 513.
 (pdftex.def)             Requested size: 241.14749pt x 120.57246pt.
 
-Class acmart Warning: A possible image without description on input line 488.
+Class acmart Warning: A possible image without description on input line 517.
 
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[4.4 <./res1.png> <./res2.png>] Processing 'acks' comment.
+Processing 'acks' comment.
 \openout3 = `comment.cut'.
 
-
-Comment 'acks' writing to comment.cut. Straight input of comment.cut.
-(comment.cut) (main.bbl
+ Comment 'acks' writing to comment.cut.
+Straight input of comment.cut. (comment.cut) (main.bbl [5.5 <./res3.png>]
 LaTeX Info: Redefining \tempurl on input line 103.
 LaTeX Info: Redefining \tempurl on input line 127.
 LaTeX Info: Redefining \tempurl on input line 144.
 LaTeX Info: Redefining \tempurl on input line 174.
 )
-Overfull \hbox (1.41557pt too wide) in paragraph at lines 555--559
+Overfull \hbox (1.41557pt too wide) in paragraph at lines 587--591
 \T1/LinuxLibertineT-TLF/m/n/9 (-20) Im-ple-mented perf scripts to au-to-mate co
 l-lec-tion of hard-ware counter
  []
 
-[5.5 <./res3.png>]
+
 (/Users/anmol/Library/Application Support/MiKTeX/texmfs/install/tex/generic/str
 ingenc/se-pdfdoc.def
 File: se-pdfdoc.def 2019/11/29 v1.12 stringenc: PDFDocEncoding
@@ -1241,6 +1231,10 @@ Class acmart Warning: ACM reference format is mandatory
 
 Class acmart Warning: CCS concepts are mandatory for papers over two pages.
 
+
+Package balance Warning: You have called \balance in second column
+(balance)                Columns might not be balanced.
+
 [6.6] (main.aux)
 
 LaTeX Warning: There were multiply-defined labels.
@@ -1250,12 +1244,12 @@ Package rerunfilecheck Info: File `main.out' has not changed.
  ) 
 Here is how much of TeX's memory you used:
  20929 strings out of 478583
- 348095 string characters out of 2841494
- 713679 words of memory out of 3000000
+ 348092 string characters out of 2841494
+ 717981 words of memory out of 3000000
  38167 multiletter control sequences out of 15000+600000
  598463 words of font info for 307 fonts, out of 8000000 for 9000
  1302 hyphenation exceptions out of 8191
- 84i,11n,131p,1003b,475s stack positions out of 10000i,1000n,20000p,200000b,80000s
+ 84i,11n,131p,1003b,570s stack positions out of 10000i,1000n,20000p,200000b,80000s
 {/Users/anmol/Library/Application Support/MiKTeX/texmfs/install/fonts/enc/dvi
 ps/inconsolata/i4-t1-4.enc}{/Users/anmol/Library/Application Support/MiKTeX/tex
 mfs/install/fonts/enc/dvips/libertine/lbtn_25tcsq.enc}{/Users/anmol/Library/App
@@ -1276,7 +1270,7 @@ cation Support/MiKTeX/texmfs/install/fonts/type1/public/libertine/LinLibertineT
 /MiKTeX/texmfs/install/fonts/type1/public/libertine/LinLibertineTI.pfb></Users/
 anmol/Library/Application Support/MiKTeX/texmfs/install/fonts/type1/public/newt
 x/txsys.pfb>
-Output written on main.pdf (6 pages, 690969 bytes).
+Output written on main.pdf (6 pages, 693455 bytes).
 PDF statistics:
  208 PDF objects out of 1000 (max. 8388607)
  44 named destinations out of 1000 (max. 500000)
