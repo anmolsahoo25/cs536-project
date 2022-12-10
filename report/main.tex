@@ -238,6 +238,7 @@ performance.
   \centering
   \includegraphics[width=\linewidth]{motivating_example}
     \label{fig:motivating}
+    \vspace{-2em}
     \caption{Motivating Example}
     \Description{Brief representation of our contributions at different layers.
     Boxes in green represent our contribution and boxes in grey are the existing
@@ -279,6 +280,7 @@ code to run the application.
   \centering
   \includegraphics[width=\linewidth]{solution_architecture}
     \label{fig:solution}
+    \vspace{-2em}
     \caption{Solution architecture}
     \Description{Brief representation of our contributions at different layers.
     Boxes in green represent our contribution and boxes in grey are the existing
@@ -338,12 +340,16 @@ guest OS. Then, we inspect the partition ID provided by the guest OS and use it
 to allot it to a cache partition. An important nuance to keep in mind is that
 the guest OS may be executing on a different hardware thread than where the
 hypervisor intercepted it. Thus it is important to use the features of KVM to
-signal the correct core to allot the cache partition.
+signal the correct core to allot the cache partition. Further, the choice of
+allocation policy also plays an important role in the effectiveness of the
+solution. Here we implement a simple round-robin scheme which allocates each new
+call to a different partition.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=\linewidth]{bitmasks}
     \label{fig:bitmasks}
+    \vspace{-2em}
     \caption{Example of cache bitmasks}
 \end{figure}
 
@@ -396,7 +402,90 @@ misses in the application. Thus, we would like to analyze if the total number of
 application cache misses is increasing substantially. Finally, we also measure
 application level benchmarks such as bandwidth and latency of requests served,
 since finally any improvement in the software should result in an observed
-improvement in the client side performance.
+improvement in the client side performance. We have implemented four benchmarks
+- (1) \textbf{CS}: This program implements the Websocket protocol over TCP and
+creates a chat server. (2) \textbf{ML}: This program implements different ML
+algorithms to perform packet based quality-of-service classification (3)
+\textbf{KV} : This program implements a replicated key-value store using
+leader-server replication (4) \textbf{DL} : This program implements a deep
+learning inference workload for image recognition
+We believe this set of benchmarks are representative because they capture
+different types of workloads. \textbf{CS} is mostly network IO with little
+computation since it only performs Websocket packet-framing and forwarding over
+TCP. \textbf{ML} and \textbf{DL} represent a balance between network IO and
+compute, since the inference procedure requires non-trivial amounts of
+computation. Finally, \textbf{KV} represents a combination of network IO and
+disk IO, since the records are stored on the filesystem. Thus, evaluating the
+performance of our solution over these benchmarks should help us understand how
+it works. All of our benchmarks are executed on an AWS m5zn.metal machine with
+48 logical cores, running on Amazon Linux 2, using QEMU 6.0.0 and Unikraft
+0.10.0. We have 4 test scenarios - (1) \textbf{OS} : run the application on the
+OS, (2) \textbf{OS+PT} : run the application on the OS stack + fine-grained
+partitioning, (3) \textbf{UK} : run the application as a unikernel, (4)
+\textbf{UK+PT} : run the application as a unikernel + fine-grained partitioning.
+This will help to evaluate the effect of each component of our solution. In the
+following figures, we present and discuss our results. Note that the absolute
+numbers of the hardware counters are normalized, to make comparison easier. In
+Fig.4, we see that across the benchmarks the PCIe hits stay constant in the
+\textbf{OS+PT} case, but increase in the \textbf{UK} and \textbf{UK+PT} case.
+This shows that our cache partitioning has the effect of isolating network
+buffers, so that PCIe hits are increased.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{res1}
+    \label{fig:motivating}
+    \vspace{-2em}
+    \caption{PCIe Hits for each benchmark}
+\end{figure}
+
+Next we move to the LLC misses observed under each scheme. As shown in Fig. 5.,
+our partitioning scheme increases the cache misses, whether it is added to
+\textbf{OS} or \textbf{UK}. This is expected, since the computational parts of
+the application are receiving less cache space, more cache misses are expected.
+It is important to note that going from \textbf{OS} to \textbf{UK} reduces the
+number of cache misses, since getting rid of the OS memory footprint makes
+additional cache available for the application.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{res2}
+    \label{fig:motivating}
+    \vspace{-2em}
+    \caption{LLC Misses for each benchmark}
+\end{figure}
+
+In Fig. 6, we discuss the results of our throughput experiments. For each
+application, we setup multiple clients who then send requests to saturate the
+link and we check how many requests per second we can serve. We note that while
+throughput increases for most benchmarks when going from \textbf{OS} to
+\textbf{UK} due to the smaller memory footprint, only in the case of the
+\textbf{CS} and \textbf{KV} benchmarks do we see a significant increase in the
+performance due to our partitioning scheme. We hypothesize this due to the fact
+that these application mainly perform IO, the partioning scheme improves the IO
+performance, thus an overall performance improvement is obtained. In the
+\textbf{DL} and \textbf{ML} case, it is possible that the smaller cache
+allocation is affecting the computation of the entire result.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{res3}
+    \label{fig:motivating}
+    \vspace{-2em}
+    \caption{Throughput for each benchmark}
+\end{figure}
+
+Finally, we observe the P99 latency for the various benchmarks in Fig. 7. As
+observed, the P99 latency improves (smaller is better) for only the \textbf{CS}
+benchmark and gets worse for all others.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{res3}
+    \label{fig:motivating}
+    \vspace{-2em}
+    \caption{P99 Latency for each benchmark}
+\end{figure}
 
 \section{Related Work}
 The work most closely related to our work is \cite{alireza_2020}. The work
@@ -416,7 +505,32 @@ using Intel RDT (which is a more mainstream implementation of hardware cache
 partitioning) and also does not take into the effect of hypervisor (necessary
 for safe isolation of applications).
 
-\section{Future Work}
+\section{Conclusion and Future Work}
+
+We have designed and implemented a solution to reduce the effect of cache
+contention on the performance of network IO and demonstarted our results. While
+the results are not promising, the benchmarks \textbf{CS} and \textbf{KV}
+provide insight into situations where this solution may work. Additionally, it
+also corroborates the claim of \cite{alireza_2020} that heavily CPU bound
+applications do not benefit much from DDIO tuning based on cache partitioning as
+observed in \textbf{ML} and \textbf{DL}. Still, I feel this work opens up
+interesting future directions. The first and most important learning is that
+this technique can be specialized for specific applications such as virtual
+switches, network function virtualization and similar applications which are
+dominated by network IO. Further, the cache allocation policy needs a thorough
+review to ensure that it is performing optimally. This would require digging
+deeper into the cache allocation being performed by our simple round-robin
+algorithm and how it can be improved. On the measurement front, we feel there
+are multiple things that can be improved to make this work better. First, the
+network stack used in the \textbf{OS} and \textbf{UK} setup is different, since
+we could only port a simple TCP/IP stack to the unikernel environment. It would
+be good to have something like DPDK tuned for both the setups, thus giving a
+better comparison. Second, the measurements are performed in noisy environments,
+because the Linux kernel is still running on the cores that are running the
+unikernels. Isolating these cores requires the use of advanced features such as
+ISOLCPUs, which are not available in the EC2 instances that we used. Thus, we
+believe that we have made a case for intra-application cache partitioning and
+unikernels.
 
 \begin{acks}
     To Prof. Muhammad Shahbaz for conducting such a great course and Sharuna
